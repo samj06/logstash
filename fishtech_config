@@ -1,5 +1,4 @@
-# Sample Logstash configuration for creating a simple
-# Beats -> Logstash -> Elasticsearch pipeline.
+#Sam Johnson Config File 
 
 input {
 	file {
