@@ -1,0 +1,61 @@
+# Sample Logstash configuration for creating a simple
+# Beats -> Logstash -> Elasticsearch pipeline.
+
+input {
+	file {
+		path => "C:/Users/Sam/Documents/logstash/logstash-7.9.2/security_log.txt"
+		start_position => "beginning"
+		mode => "read"
+		file_completed_action => "log"
+		file_completed_log_path => "C:/Users/Sam/Documents/logstash/logstash-7.9.2/file_completed_log.txt"
+	}
+}
+
+filter {
+####### PARSE LOG FILE #######
+	grok {
+		match => { "message" => '%{DATA:logid} %{TIMESTAMP_ISO8601:time} %{WORD:logsource} %{WORD:sourcetype} %{NUMBER:source_version} - - alertname="%{GREEDYDATA:description}" computername="%{GREEDYDATA:hostname}" computerip="%{IP:source_ip:ip}" severity="%{NUMBER:severity}"'}
+	}
+####### CHANGE SEVERITY FROM NUMBER TO SEVERITY LEVEL #######
+	if [severity] == "1" {
+		mutate {
+			replace => [ "severity" , "HIGH" ]
+		}
+	}
+	else if [severity] == "2" {
+		mutate {
+			replace => [ "severity", "MEDIUM" ]
+		}
+	}
+	else if [severity] == "3" {
+		mutate {
+			replace => [ "severity", "LOW" ]
+		}
+	}
+####### GEO IP LOOK UP #######
+	geoip {
+		source => "source_ip"
+	}
+####### REMOVE UNNEEDED DATA #######
+	mutate {
+		remove_field => [ "sourcetype", "source_version", "logid", "path", "@timestamp", "@version", "message", "host" ] 
+	}
+
+	
+}
+
+output {
+	elasticsearch { 
+		hosts => ["127.0.0.1:9200"] 
+		index => "logstash-%{+yyyy.MM.dd}"
+	}
+	file {
+		codec => json
+		path => ["C:/Users/Sam/Documents/logstash/logstash-7.9.2/output.txt"]
+	}
+	stdout {codec => json}
+}
+
+
+
+
